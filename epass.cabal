@@ -1,0 +1,29 @@
+Name:          epass
+Version:       0.0
+Stability:     Alpha
+Synopsis:      Baisc, Erlang-like message passing supporting sockets.
+Description:   This package provides Erlang-like mailboxes for message passing.
+               It also supports wrapping communication via e.g. sockets.
+License:       BSD3
+License-File:  LICENSE
+Build-Type:    Simple
+Author:        Andreas Baldeau
+Maintainer:    Andreas Baldeau <andreas@baldeau.net>
+Category:      Concurrency, Network
+Tested-With:   GHC == 6.12.1
+Cabal-Version: >= 1.2
+
+Extra-Source-Files:
+    README
+
+Library
+    Build-Depends:
+        base >= 4 && < 5
+
+    Ghc-Options:
+        -Wall
+
+    Exposed-Modules:
+        Control.Concurrent.Mailbox
+        Control.Concurrent.Mailbox.Wrapper
+
