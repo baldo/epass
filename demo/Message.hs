@@ -5,7 +5,7 @@ module Message
     )
 where
 
-import Wrapper
+import Control.Concurrent.Mailbox.Wrapper
 
 data Message = MsgEvent Event
              | MsgCommand Command
