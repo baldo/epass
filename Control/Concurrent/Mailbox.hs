@@ -3,10 +3,14 @@ module Control.Concurrent.Mailbox
     , MsgHandler
 
     , (#)
+
     , newMailbox
+
     , send
     , (!)
+
     , receive
+    , receiveNonBlocking
     , receiveTimeout
     )
 where
@@ -15,6 +19,7 @@ import Prelude hiding (catch)
 
 import Control.Concurrent
 import Control.Exception
+import Control.Monad
 import Data.Time
 import System.Timeout
 
@@ -38,12 +43,34 @@ receive :: Mailbox m -> [MsgHandler m] -> IO ()
 receive _ [] = return ()
 receive (MBox chan) handlers = matchAll chan Nothing handlers
 
+receiveNonBlocking :: Mailbox m -> [MsgHandler m] -> IO ()
+receiveNonBlocking (MBox chan) handlers = matchCurrent chan handlers
+
 receiveTimeout :: Mailbox m -> Int -> [MsgHandler m] -> IO ()
 receiveTimeout _ _ [] = return ()
+receiveTimeout mbox 0 handlers = receiveNonBlocking mbox handlers
 receiveTimeout (MBox chan) to handlers = do
     curTime <- getCurrentTime
     let dt = fromIntegral to / 1000000
     matchAll chan (Just $ addUTCTime dt curTime) handlers
+
+matchCurrent :: Chan m -> [MsgHandler m] -> IO ()
+matchCurrent chan hs = do
+    empty <- isEmptyChan chan
+    if empty
+        then
+            return ()
+        else do
+            m <- readChan chan
+            matched <- match m Nothing hs
+            case matched of
+                Just False -> do
+                    matchCurrent chan hs
+                    unGetChan chan m
+                Just True ->
+                    return ()
+                Nothing ->
+                    error "Timed out even if no timeout given. This should not happen!"
 
 matchAll :: Chan m -> Maybe UTCTime -> [MsgHandler m] -> IO ()
 matchAll chan Nothing hs = do
