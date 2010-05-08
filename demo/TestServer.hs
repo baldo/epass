@@ -16,9 +16,14 @@ main = do
 
 loop :: Mailbox Message -> Mailbox Message -> IO ()
 loop inBox outBox = do
+    receiveTimeout inBox 100000
+        [ \(M 5) -> (#) $ do
+            putStrLn "Matched 5 within timeout."
+            outBox ! M (-1)
+        ]
     receive inBox
-        [ \(M (n + 1)) -> outBox ! M (n * 2)
-        , \m           -> print m
+        [ \(M (n + 1)) -> (#) $ outBox ! M (n * 2)
+        , \m           -> (#) $ print m
         ]
 
     loop inBox outBox

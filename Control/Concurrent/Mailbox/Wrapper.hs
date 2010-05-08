@@ -99,7 +99,7 @@ outWrapper
     -> IO ()
 outWrapper hdl mbox = do
     receive mbox
-        [ \msg -> do
+        [ \msg -> (#) $ do
             hPutStr hdl $ toString msg
             hPutChar hdl '\n'
             hFlush hdl

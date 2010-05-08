@@ -23,7 +23,7 @@ loop inBox outBox n = do
     outBox ! M n
 
     receive inBox
-        [ \m -> print m
+        [ \m -> (#) $ print m
         ]
 
     usleep 100000
