@@ -1,6 +1,6 @@
 import Message
-import Mailbox
-import Wrapper
+import Control.Concurrent.Mailbox
+import Control.Concurrent.Mailbox.Wrapper
 
 import Network
 
