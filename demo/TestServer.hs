@@ -1,6 +1,7 @@
 import Message
 import Control.Concurrent.Mailbox
 import Control.Concurrent.Mailbox.Wrapper
+import System.Posix
 
 import Network
 
@@ -16,14 +17,24 @@ main = do
 
 loop :: Mailbox Message -> Mailbox Message -> IO ()
 loop inBox outBox = do
-    receiveTimeout inBox 100000
-        [ \(M 5) -> (#) $ do
-            putStrLn "Matched 5 within timeout."
+    usleep 1000
+    receiveNonBlocking inBox
+        [ \m -> (#) $ do
+            putStrLn $ "Matched " ++ show m ++ " non-blocking."
             outBox ! M (-1)
-        ]
-    receive inBox
-        [ \(M (n + 1)) -> (#) $ outBox ! M (n * 2)
-        , \m           -> (#) $ print m
-        ]
-
-    loop inBox outBox
+            loop inBox outBox
+        ] $
+        receiveTimeout inBox 1000
+            [ \m -> (#) $ do
+                putStrLn $ "Matched " ++ show m ++ " within timeout."
+                outBox ! M (-1)
+                loop inBox outBox
+            ] $
+            receive inBox
+                [ \(M (n + 1)) -> (#) $ do
+                    outBox ! M (n * 2)
+                    loop inBox outBox
+                , \m -> (#) $ do
+                    print m
+                    loop inBox outBox
+                ]
