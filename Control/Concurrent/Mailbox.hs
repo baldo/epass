@@ -56,36 +56,47 @@ send (MBox chan) = writeChan chan
 
 receive :: Mailbox m -> [MsgHandler m] -> IO ()
 receive _ [] = return ()
-receive (MBox chan) handlers = matchAll chan handlers
+receive (MBox chan) handlers = do
+    a <- matchAll chan handlers
+    a
 
-receiveTimeout :: Mailbox m -> Int -> [MsgHandler m] -> IO ()
-receiveTimeout _ _ [] = return ()
-receiveTimeout mbox 0 handlers = receiveNonBlocking mbox handlers
-receiveTimeout (MBox chan) to handlers = do
+receiveTimeout :: Mailbox m -> Int -> [MsgHandler m] -> IO () -> IO ()
+receiveTimeout _ _ [] toa = toa
+receiveTimeout mbox 0 handlers toa = receiveNonBlocking mbox handlers toa
+receiveTimeout (MBox chan) to handlers toa = do
     endTime <- calcEndTime to
-    matchAllTimeout chan endTime handlers
+    ma <- matchAllTimeout chan endTime handlers
+    case ma of
+        Just a  -> a
+        Nothing -> toa
 
-receiveNonBlocking :: Mailbox m -> [MsgHandler m] -> IO ()
-receiveNonBlocking (MBox chan) handlers = matchCurrent chan handlers
+receiveNonBlocking :: Mailbox m -> [MsgHandler m] -> IO () -> IO ()
+receiveNonBlocking (MBox chan) handlers na = do
+    ma <- matchCurrent chan handlers
+    case ma of
+        Just a  -> a
+        Nothing -> na
 
-matchAll :: Chan m -> [MsgHandler m] -> IO ()
+matchAll :: Chan m -> [MsgHandler m] -> IO (IO ())
 matchAll chan hs = do
     m <- readChan chan
-    matched <- match m hs
+    ma <- match m hs
 
-    if matched
-        then
-            return ()
-        else do
-            matchAll chan hs
+    case ma of
+        Just a ->
+            return a
+
+        Nothing -> do
+            r <- matchAll chan hs
             unGetChan chan m
+            return r
 
-matchAllTimeout :: Chan m -> UTCTime -> [MsgHandler m] -> IO ()
+matchAllTimeout :: Chan m -> UTCTime -> [MsgHandler m] -> IO (Maybe (IO ()))
 matchAllTimeout chan endTime hs = do
     timeLeft <- calcTimeLeft endTime
 
     if timeLeft <= 0
-        then return ()
+        then return Nothing
         else do
             mm <- timeout timeLeft $ readChan chan
 
@@ -93,62 +104,60 @@ matchAllTimeout chan endTime hs = do
                 Just m -> do
                     matched <- matchTimeout m endTime hs
                     case matched of
-                        Just False -> do
-                            matchAllTimeout chan endTime hs
+                        Left Nothing -> do
+                            r <- matchAllTimeout chan endTime hs
                             unGetChan chan m
-                        Just True ->
-                            return ()
-                        Nothing ->
-                            unGetChan chan m
-                Nothing ->
-                    return ()
+                            return r
 
-matchCurrent :: Chan m -> [MsgHandler m] -> IO ()
+                        Left (Just a) ->
+                            return $ Just a
+
+                        Right () -> do
+                            unGetChan chan m
+                            return Nothing
+                Nothing ->
+                    return Nothing
+
+matchCurrent :: Chan m -> [MsgHandler m] -> IO (Maybe (IO ()))
 matchCurrent chan hs = do
     empty <- isEmptyChan chan
     if empty
-        then
-            return ()
+        then return Nothing
         else do
-            m <- readChan chan
-            matched <- match m hs
-            if matched
-                then
-                    return ()
-                else do
-                    matchAll chan hs
-                    unGetChan chan m
+            m  <- readChan chan
+            ma <- match m hs
+            case ma of
+                Just a ->
+                    return $ Just a
 
-match :: m -> [MsgHandler m] -> IO Bool
-match _ [] = return False
+                Nothing -> do
+                    r <- matchCurrent chan hs
+                    unGetChan chan m
+                    return r
+
+match :: m -> [MsgHandler m] -> IO (Maybe (IO ()))
+match _ [] = return Nothing
 match m (h : hs) = do
     ma <- catch (case h m of ((), a) -> return $ Just a)
                 handlePatternMatchFail
     case ma of
-        Just action -> do
-            action
-            return True
-        Nothing ->
-            match m hs
+        Just action -> return $ Just action
+        Nothing     -> match m hs
 
-matchTimeout :: m -> UTCTime -> [MsgHandler m] -> IO (Maybe Bool)
-matchTimeout _ _ [] = return $ Just False
+matchTimeout :: m -> UTCTime -> [MsgHandler m] -> IO (Either (Maybe (IO ())) ())
+matchTimeout _ _ [] = return $ Left Nothing
 matchTimeout m endTime (h : hs) = do
     timeLeft <- calcTimeLeft endTime
     if timeLeft <= 0
-        then return Nothing
+        then return $ Right ()
         else do
             ma <- timeout timeLeft $
                     catch (case h m of ((), a) -> return $ Just a)
                           handlePatternMatchFail
             case ma of
-                Just (Just action) -> do
-                    action
-                    return $ Just True
-                Just Nothing ->
-                    matchTimeout m endTime hs
-                Nothing -> do
-                    return Nothing
+                Just (Just action) -> return $ Left $ Just action
+                Just Nothing       -> matchTimeout m endTime hs
+                Nothing            -> return $ Right ()
 
 handlePatternMatchFail :: PatternMatchFail -> IO (Maybe (IO ()))
 handlePatternMatchFail _ = return Nothing
