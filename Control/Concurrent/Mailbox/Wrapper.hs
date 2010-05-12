@@ -3,6 +3,7 @@ module Control.Concurrent.Mailbox.Wrapper
 
     , wrapReadHandle
     , wrapWriteHandle
+    , wrapReadWriteHandle
     , wrapReadHandleWithMailbox
     , wrapWriteHandleWithMailbox
     )
@@ -40,6 +41,17 @@ wrapWriteHandle
     => Handle
     -> IO (Mailbox m, ThreadId)
 wrapWriteHandle = wrapHandle outWrapper
+
+-- | Maps both in and out wrapper to the hdl
+-- and return both Mailbox and ThreadId 
+wrapReadWriteHandle 
+    :: Wrappable m 
+    => Handle 
+    -> IO (Mailbox m, ThreadId, Mailbox m, ThreadId)
+wrapReadWriteHandle hdl = do
+    (i,t1)  <- wrapHandle inWrapper hdl
+    (o,t2)  <- wrapHandle outWrapper hdl
+    return (i,t1,o,t2)
 
 wrapHandle
     :: Wrappable m
