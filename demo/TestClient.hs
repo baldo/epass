@@ -1,10 +1,11 @@
+module Main where
+
 import Message
 import Control.Concurrent.Mailbox
 import Control.Concurrent.Mailbox.Wrapper
 
 import Network
 import System.IO
-import System.Posix
 
 main :: IO ()
 main = do
@@ -13,12 +14,15 @@ main = do
     hPutStr hdl "Test123\n"
     hFlush hdl
 
-    (outBox, _) <- wrapWriteHandle hdl
     (inBox, _)  <- wrapReadHandle hdl
+                        (\inBox e -> inBox ! (error $ "Handled: " ++ show e))
+    (outBox, _) <- wrapWriteHandle hdl
+                        (\_ e -> inBox ! (error $ "Handled: " ++ show e))
 
     loop inBox outBox 1
 
 loop :: Mailbox Message -> Mailbox Message -> Int -> IO ()
+loop _inBox outBox 1000000 = outBox ! MsgCommand CmdQuit
 loop inBox outBox n = do
     outBox ! M n
 

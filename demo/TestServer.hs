@@ -1,7 +1,8 @@
+module Main where
+
 import Message
 import Control.Concurrent.Mailbox
 import Control.Concurrent.Mailbox.Wrapper
-import System.Posix
 
 import Network
 
@@ -11,26 +12,21 @@ main = do
     (hdl, _, _) <- accept sock
 
     (inBox, _)  <- wrapReadHandle hdl
+                        (\inBox e -> inBox ! (error $ "Handled: " ++ show e))
     (outBox, _) <- wrapWriteHandle hdl
+                        (\_ e -> inBox ! (error $ "Handled: " ++ show e))
 
     loop inBox outBox
 
 loop :: Mailbox Message -> Mailbox Message -> IO ()
 loop inBox outBox = do
-    usleep 1000
     receiveNonBlocking inBox
-        [ \m -> (#) $ do
+        [ \(MsgCommand CmdQuit) -> (#) $ return ()
+        , \m -> (#) $ do
             putStrLn $ "Matched " ++ show m ++ " non-blocking."
             outBox ! M (-1)
             loop inBox outBox
-        ] $
-        receiveTimeout inBox 1000
-            [ \m -> (#) $ do
-                putStrLn $ "Matched " ++ show m ++ " within timeout."
-                outBox ! M (-1)
-                loop inBox outBox
-            ] $
-            receive inBox
+        ] $ receive inBox
                 [ \(M (n + 1)) -> (#) $ do
                     outBox ! M (n * 2)
                     loop inBox outBox
