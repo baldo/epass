@@ -3,6 +3,7 @@ module Control.Concurrent.Mailbox.Wrapper
 
     , wrapReadHandle
     , wrapWriteHandle
+    , closeWrappedHandle
     , wrapReadHandleWithMailbox
     , wrapWriteHandleWithMailbox
     )
@@ -55,6 +56,12 @@ wrapHandle wrapper hdl errHandler = do
     mbox <- newMailbox
     tid <- forkIO $ wrapper hdl mbox errHandler
     return $wrapMailbox mbox tid
+
+closeWrappedHandle
+    :: Wrappable m
+    => Mailbox m
+    -> IO ()
+closeWrappedHandle m = killThread $ unwrapMailbox m
 
 wrapReadHandleWithMailbox
     :: Wrappable m
