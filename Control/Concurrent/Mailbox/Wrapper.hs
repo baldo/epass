@@ -13,7 +13,9 @@ import Control.Concurrent.Mailbox
 
 import Control.Concurrent
 import System.IO
-import System.IO.Error
+
+type ErrorHandler m = Mailbox m -> IOError -> IO ()
+type Wrapper m = (Handle -> Mailbox m -> ErrorHandler m -> IO ())
 
 class Wrappable m where
     toString :: m -> String
@@ -33,12 +35,14 @@ class Wrappable m where
 wrapReadHandle
     :: Wrappable m
     => Handle
+    -> ErrorHandler m
     -> IO (Mailbox m, ThreadId)
 wrapReadHandle = wrapHandle inWrapper
 
 wrapWriteHandle
     :: Wrappable m
     => Handle
+    -> ErrorHandler m
     -> IO (Mailbox m, ThreadId)
 wrapWriteHandle = wrapHandle outWrapper
 
@@ -55,18 +59,20 @@ wrapReadWriteHandle hdl = do
 
 wrapHandle
     :: Wrappable m
-    => (Handle -> Mailbox m -> IO ())
+    => Wrapper m
     -> Handle
+    -> ErrorHandler m
     -> IO (Mailbox m, ThreadId)
-wrapHandle wrapper hdl = do
+wrapHandle wrapper hdl errHandler = do
     mbox <- newMailbox
-    tid <- forkIO $ wrapper hdl mbox
+    tid <- forkIO $ wrapper hdl mbox errHandler
     return (mbox, tid)
 
 wrapReadHandleWithMailbox
     :: Wrappable m
     => Handle
     -> Mailbox m
+    -> ErrorHandler m
     -> IO ThreadId
 wrapReadHandleWithMailbox = wrapHandleWithMailbox inWrapper
 
@@ -74,23 +80,24 @@ wrapWriteHandleWithMailbox
     :: Wrappable m
     => Handle
     -> Mailbox m
+    -> ErrorHandler m
     -> IO ThreadId
 wrapWriteHandleWithMailbox = wrapHandleWithMailbox outWrapper
 
 wrapHandleWithMailbox
     :: Wrappable m
-    => (Handle -> Mailbox m -> IO ())
+    => Wrapper m
     -> Handle
     -> Mailbox m
+    -> ErrorHandler m
     -> IO ThreadId
-wrapHandleWithMailbox wrapper hdl mbox = forkIO $ wrapper hdl mbox
+wrapHandleWithMailbox wrapper hdl mbox errHandler =
+    forkIO $ wrapper hdl mbox errHandler
 
 inWrapper
     :: Wrappable m
-    => Handle
-    -> Mailbox m
-    -> IO ()
-inWrapper hdl mbox = do
+    => Wrapper m
+inWrapper hdl mbox errHandler = do
     eline <- catch (fmap Left $ hGetLine hdl) (return . Right)
 
     case eline of
@@ -99,23 +106,27 @@ inWrapper hdl mbox = do
                 Just msg -> mbox ! msg
                 Nothing  -> putStrLn $ "Error: Cannot parse message: " ++ show line
 
-            inWrapper hdl mbox
-        Right e -> do
-            mbox ! (error $ show e)
-            print $ ioeGetErrorType e
+            inWrapper hdl mbox errHandler
+        Right e ->
+            errHandler mbox e
 
 outWrapper
     :: Wrappable m
-    => Handle
-    -> Mailbox m
-    -> IO ()
-outWrapper hdl mbox = do
+    => Wrapper m
+outWrapper hdl mbox errHandler = do
     receive mbox
         [ \msg -> (#) $ do
-            hPutStr hdl $ toString msg
-            hPutChar hdl '\n'
-            hFlush hdl
-        ]
+            let smsg = toString msg
 
-    outWrapper hdl mbox
+            me <- catch (do
+                hPutStr hdl smsg
+                hPutChar hdl '\n'
+                hFlush hdl
+                return Nothing)
+                (return . Just)
+
+            case me of
+                Nothing -> outWrapper hdl mbox errHandler
+                Just e  -> errHandler mbox e
+        ]
 

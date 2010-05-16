@@ -40,9 +40,9 @@ calcTimeLeft endTime = do
 
 newtype Mailbox m = MBox (Chan m)
 
-type MsgHandler m = m -> ((), IO ())
+type MsgHandler m a = m -> ((), IO a)
 
-(#) :: IO () -> ((), IO ())
+(#) :: IO a -> ((), IO a)
 (#) = (,) ()
 
 newMailbox :: IO (Mailbox m)
@@ -54,13 +54,13 @@ newMailbox = fmap MBox newChan
 send :: Mailbox m -> m -> IO ()
 send (MBox chan) = writeChan chan
 
-receive :: Mailbox m -> [MsgHandler m] -> IO ()
-receive _ [] = return ()
+receive :: Mailbox m -> [MsgHandler m a] -> IO a
+receive _ [] = error "No message handler given! Cannot match."
 receive (MBox chan) handlers = do
     a <- matchAll chan handlers
     a
 
-receiveTimeout :: Mailbox m -> Int -> [MsgHandler m] -> IO () -> IO ()
+receiveTimeout :: Mailbox m -> Int -> [MsgHandler m a] -> IO a -> IO a
 receiveTimeout _ _ [] toa = toa
 receiveTimeout mbox 0 handlers toa = receiveNonBlocking mbox handlers toa
 receiveTimeout (MBox chan) to handlers toa = do
@@ -70,14 +70,14 @@ receiveTimeout (MBox chan) to handlers toa = do
         Just a  -> a
         Nothing -> toa
 
-receiveNonBlocking :: Mailbox m -> [MsgHandler m] -> IO () -> IO ()
+receiveNonBlocking :: Mailbox m -> [MsgHandler m a] -> IO a -> IO a
 receiveNonBlocking (MBox chan) handlers na = do
     ma <- matchCurrent chan handlers
     case ma of
         Just a  -> a
         Nothing -> na
 
-matchAll :: Chan m -> [MsgHandler m] -> IO (IO ())
+matchAll :: Chan m -> [MsgHandler m a] -> IO (IO a)
 matchAll chan hs = do
     m <- readChan chan
     ma <- match m hs
@@ -91,7 +91,7 @@ matchAll chan hs = do
             unGetChan chan m
             return r
 
-matchAllTimeout :: Chan m -> UTCTime -> [MsgHandler m] -> IO (Maybe (IO ()))
+matchAllTimeout :: Chan m -> UTCTime -> [MsgHandler m a] -> IO (Maybe (IO a))
 matchAllTimeout chan endTime hs = do
     timeLeft <- calcTimeLeft endTime
 
@@ -118,7 +118,7 @@ matchAllTimeout chan endTime hs = do
                 Nothing ->
                     return Nothing
 
-matchCurrent :: Chan m -> [MsgHandler m] -> IO (Maybe (IO ()))
+matchCurrent :: Chan m -> [MsgHandler m a] -> IO (Maybe (IO a))
 matchCurrent chan hs = do
     empty <- isEmptyChan chan
     if empty
@@ -135,7 +135,7 @@ matchCurrent chan hs = do
                     unGetChan chan m
                     return r
 
-match :: m -> [MsgHandler m] -> IO (Maybe (IO ()))
+match :: m -> [MsgHandler m a] -> IO (Maybe (IO a))
 match _ [] = return Nothing
 match m (h : hs) = do
     ma <- catch (case h m of ((), a) -> return $ Just a)
@@ -144,7 +144,7 @@ match m (h : hs) = do
         Just action -> return $ Just action
         Nothing     -> match m hs
 
-matchTimeout :: m -> UTCTime -> [MsgHandler m] -> IO (Either (Maybe (IO ())) ())
+matchTimeout :: m -> UTCTime -> [MsgHandler m a] -> IO (Either (Maybe (IO a)) ())
 matchTimeout _ _ [] = return $ Left Nothing
 matchTimeout m endTime (h : hs) = do
     timeLeft <- calcTimeLeft endTime
@@ -159,6 +159,6 @@ matchTimeout m endTime (h : hs) = do
                 Just Nothing       -> matchTimeout m endTime hs
                 Nothing            -> return $ Right ()
 
-handlePatternMatchFail :: PatternMatchFail -> IO (Maybe (IO ()))
+handlePatternMatchFail :: PatternMatchFail -> IO (Maybe (IO a))
 handlePatternMatchFail _ = return Nothing
 
