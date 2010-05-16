@@ -17,7 +17,7 @@ where
 
 import Prelude hiding (catch)
 
-import Control.Concurrent
+import Control.Concurrent 
 import Control.Exception
 import Data.Time
 import System.Timeout
@@ -38,7 +38,7 @@ calcTimeLeft endTime = do
     curTime <- getCurrentTime
     return $ round $ (diffUTCTime endTime curTime) * timeoutFactor
 
-newtype Mailbox m = MBox (Chan m)
+data Mailbox m = MBox (Chan m) ThreadId
 
 type MsgHandler m a = m -> ((), IO a)
 
@@ -46,24 +46,24 @@ type MsgHandler m a = m -> ((), IO a)
 (#) = (,) ()
 
 newMailbox :: IO (Mailbox m)
-newMailbox = fmap MBox newChan
+newMailbox = fmap (flip MBox $ error "This isn't a wrapped mailbox") newChan
 
 (!) :: Mailbox m -> m -> IO ()
 (!) = send
 
 send :: Mailbox m -> m -> IO ()
-send (MBox chan) = writeChan chan
+send (MBox chan _) = writeChan chan
 
 receive :: Mailbox m -> [MsgHandler m a] -> IO a
 receive _ [] = error "No message handler given! Cannot match."
-receive (MBox chan) handlers = do
+receive (MBox chan _) handlers = do
     a <- matchAll chan handlers
     a
 
 receiveTimeout :: Mailbox m -> Int -> [MsgHandler m a] -> IO a -> IO a
 receiveTimeout _ _ [] toa = toa
 receiveTimeout mbox 0 handlers toa = receiveNonBlocking mbox handlers toa
-receiveTimeout (MBox chan) to handlers toa = do
+receiveTimeout (MBox chan _) to handlers toa = do
     endTime <- calcEndTime to
     ma <- matchAllTimeout chan endTime handlers
     case ma of
@@ -71,7 +71,7 @@ receiveTimeout (MBox chan) to handlers toa = do
         Nothing -> toa
 
 receiveNonBlocking :: Mailbox m -> [MsgHandler m a] -> IO a -> IO a
-receiveNonBlocking (MBox chan) handlers na = do
+receiveNonBlocking (MBox chan _) handlers na = do
     ma <- matchCurrent chan handlers
     case ma of
         Just a  -> a
