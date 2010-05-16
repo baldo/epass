@@ -5,6 +5,7 @@ module Control.Concurrent.Mailbox
     , (#)
 
     , newMailbox
+    , wrapMailbox
 
     , send
     , (!)
@@ -47,6 +48,9 @@ type MsgHandler m a = m -> ((), IO a)
 
 newMailbox :: IO (Mailbox m)
 newMailbox = fmap (flip MBox $ error "This isn't a wrapped mailbox") newChan
+
+wrapMailbox :: Mailbox m -> ThreadId -> Mailbox m
+wrapMailbox (MBox m _) tid = MBox m tid
 
 (!) :: Mailbox m -> m -> IO ()
 (!) = send

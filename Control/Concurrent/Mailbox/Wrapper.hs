@@ -35,14 +35,14 @@ wrapReadHandle
     :: Wrappable m
     => Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (Mailbox m)
 wrapReadHandle = wrapHandle inWrapper
 
 wrapWriteHandle
     :: Wrappable m
     => Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (Mailbox m)
 wrapWriteHandle = wrapHandle outWrapper
 
 wrapHandle
@@ -50,11 +50,11 @@ wrapHandle
     => Wrapper m
     -> Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (Mailbox m)
 wrapHandle wrapper hdl errHandler = do
     mbox <- newMailbox
     tid <- forkIO $ wrapper hdl mbox errHandler
-    return (mbox, tid)
+    return $wrapMailbox mbox tid
 
 wrapReadHandleWithMailbox
     :: Wrappable m
