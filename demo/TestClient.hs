@@ -14,12 +14,14 @@ main = do
     hPutStr hdl "Test123\n"
     hFlush hdl
 
-    (inBox, _)  <- wrapReadHandle hdl
+    inBox  <- wrapReadHandle hdl
                         (\inBox e -> inBox ! (error $ "Handled: " ++ show e))
-    (outBox, _) <- wrapWriteHandle hdl
+    outBox <- wrapWriteHandle hdl
                         (\_ e -> inBox ! (error $ "Handled: " ++ show e))
 
     loop inBox outBox 1
+    mapM closeWrappedHandle [inBox,outBox]
+    hClose hdl
 
 loop :: Mailbox Message -> Mailbox Message -> Int -> IO ()
 loop _inBox outBox 1000000 = outBox ! MsgCommand CmdQuit

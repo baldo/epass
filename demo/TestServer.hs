@@ -5,18 +5,21 @@ import Control.Concurrent.Mailbox
 import Control.Concurrent.Mailbox.Wrapper
 
 import Network
+import System.IO
 
 main :: IO ()
 main = do
     sock <- listenOn $ UnixSocket "test.socket"
     (hdl, _, _) <- accept sock
 
-    (inBox, _)  <- wrapReadHandle hdl
+    inBox  <- wrapReadHandle hdl
                         (\inBox e -> inBox ! (error $ "Handled: " ++ show e))
-    (outBox, _) <- wrapWriteHandle hdl
+    outBox <- wrapWriteHandle hdl
                         (\_ e -> inBox ! (error $ "Handled: " ++ show e))
 
     loop inBox outBox
+    mapM closeWrappedHandle [inBox,outBox]
+    hClose hdl
 
 loop :: Mailbox Message -> Mailbox Message -> IO ()
 loop inBox outBox = do
