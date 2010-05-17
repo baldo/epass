@@ -1,10 +1,16 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Control.Concurrent.Mailbox.Wrapper
     ( Wrappable (..)
+    , WrapBox
 
     , wrapReadHandle
     , wrapWriteHandle
     , wrapReadHandleWithMailbox
     , wrapWriteHandleWithMailbox
+
+    , closeWrapper
     )
 where
 
@@ -31,18 +37,26 @@ class Wrappable m where
             Just msg -> [(msg, "")]
             Nothing  -> []
 
+data WrapBox m = WBox { mBox :: Mailbox m, tId :: ThreadId }
+
+instance MailboxClass WrapBox m where
+    getMessage   = getMessage   . mBox
+    unGetMessage = unGetMessage . mBox
+    putMessage   = putMessage   . mBox
+    isEmpty      = isEmpty      . mBox
+
 wrapReadHandle
     :: Wrappable m
     => Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (WrapBox m)
 wrapReadHandle = wrapHandle inWrapper
 
 wrapWriteHandle
     :: Wrappable m
     => Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (WrapBox m)
 wrapWriteHandle = wrapHandle outWrapper
 
 wrapHandle
@@ -50,18 +64,18 @@ wrapHandle
     => Wrapper m
     -> Handle
     -> ErrorHandler m
-    -> IO (Mailbox m, ThreadId)
+    -> IO (WrapBox m)
 wrapHandle wrapper hdl errHandler = do
     mbox <- newMailbox
     tid <- forkIO $ wrapper hdl mbox errHandler
-    return (mbox, tid)
+    return WBox { mBox = mbox, tId = tid }
 
 wrapReadHandleWithMailbox
     :: Wrappable m
     => Handle
     -> Mailbox m
     -> ErrorHandler m
-    -> IO ThreadId
+    -> IO (WrapBox m)
 wrapReadHandleWithMailbox = wrapHandleWithMailbox inWrapper
 
 wrapWriteHandleWithMailbox
@@ -69,7 +83,7 @@ wrapWriteHandleWithMailbox
     => Handle
     -> Mailbox m
     -> ErrorHandler m
-    -> IO ThreadId
+    -> IO (WrapBox m)
 wrapWriteHandleWithMailbox = wrapHandleWithMailbox outWrapper
 
 wrapHandleWithMailbox
@@ -78,9 +92,15 @@ wrapHandleWithMailbox
     -> Handle
     -> Mailbox m
     -> ErrorHandler m
-    -> IO ThreadId
-wrapHandleWithMailbox wrapper hdl mbox errHandler =
-    forkIO $ wrapper hdl mbox errHandler
+    -> IO (WrapBox m)
+wrapHandleWithMailbox wrapper hdl mbox errHandler = do
+    tid <- forkIO $ wrapper hdl mbox errHandler
+    return WBox { mBox = mbox, tId = tid }
+
+closeWrapper
+    :: WrapBox m
+    -> IO ()
+closeWrapper = killThread . tId
 
 inWrapper
     :: Wrappable m
@@ -91,7 +111,7 @@ inWrapper hdl mbox errHandler = do
     case eline of
         Left line -> do
             case fromString line of
-                Just msg -> mbox ! msg
+                Just msg -> mbox <! msg
                 Nothing  -> putStrLn $ "Error: Cannot parse message: " ++ show line
 
             inWrapper hdl mbox errHandler

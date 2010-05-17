@@ -28,3 +28,6 @@ Library
         Control.Concurrent.Mailbox
         Control.Concurrent.Mailbox.Wrapper
 
+    Extensions:
+        FlexibleInstances,
+        MultiParamTypeClasses
