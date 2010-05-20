@@ -71,7 +71,9 @@ newMailbox = fmap MBox newChan
 (<!) = send
 
 send :: MailboxClass b m => b m -> m -> IO ()
-send = putMessage
+send mbox msg = do
+    putMessage mbox msg
+    yield
 
 receive :: MailboxClass b m => b m -> [MsgHandler m a] -> IO a
 receive _ [] = error "No message handler given! Cannot match."
