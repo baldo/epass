@@ -26,11 +26,6 @@ Source-Repository head
     Type:     git
     Location: git://github.com/baldo/epass.git
 
-Source-Repository this
-    Type:     git
-    Location: git://github.com/baldo/epass.git
-    Tag:      0.1
-
 Library
     Build-Depends:
         base == 4.*,
