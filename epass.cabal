@@ -10,16 +10,20 @@ Build-Type:    Simple
 Author:        Andreas Baldeau
 Maintainer:    Andreas Baldeau <andreas@baldeau.net>
 Category:      Concurrency, Network
-Tested-With:   GHC == 6.12.1
-Cabal-Version: >= 1.2
+Tested-With:   GHC == 6.12.3
+Cabal-Version: >= 1.8
 
 Extra-Source-Files:
+    Setup.hs
     README
+    demo/Message.hs
+    demo/TestClient.hs
+    demo/TestServer.hs
 
 Library
     Build-Depends:
-        base >= 4 && < 5,
-        time >= 1.1 && < 1.2
+        base == 4.*,
+        time == 1.1.*
 
     Ghc-Options:
         -Wall
