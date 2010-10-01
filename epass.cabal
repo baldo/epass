@@ -24,6 +24,9 @@ Library
     Ghc-Options:
         -Wall
 
+    Hs-Source-Dirs:
+        src
+
     Exposed-Modules:
         Control.Concurrent.Mailbox
         Control.Concurrent.Mailbox.Wrapper
