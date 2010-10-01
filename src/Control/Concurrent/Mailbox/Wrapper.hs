@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 module Control.Concurrent.Mailbox.Wrapper
     ( Wrappable (..)
     , WrapBox
@@ -39,7 +36,7 @@ class Wrappable m where
 
 data WrapBox m = WBox { mBox :: Mailbox m, tId :: ThreadId }
 
-instance MailboxClass WrapBox m where
+instance MailboxClass WrapBox where
     getMessage   = getMessage   . mBox
     unGetMessage = unGetMessage . mBox
     putMessage   = putMessage   . mBox
