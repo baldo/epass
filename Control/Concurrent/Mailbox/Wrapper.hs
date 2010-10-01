@@ -123,7 +123,7 @@ outWrapper
     => Wrapper m
 outWrapper hdl mbox errHandler = do
     receive mbox
-        [ \msg -> (#) $ do
+        [ \msg -> handler $ do
             let smsg = toString msg
 
             me <- catch (do

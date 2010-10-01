@@ -27,7 +27,10 @@ loop inBox outBox n = do
     outBox <! M n
 
     receive inBox
-        [ \m -> (#) $ do
+        [ \(M 10) -> handler $ do
+            putStrLn "received 10"
+            loop inBox outBox (n + 1)
+        , \m -> handler $ do
             print m
             loop inBox outBox (n + 1)
         ]

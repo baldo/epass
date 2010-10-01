@@ -21,16 +21,16 @@ main = do
 loop :: WrapBox Message -> WrapBox Message -> IO ()
 loop inBox outBox = do
     receiveNonBlocking inBox
-        [ \(MsgCommand CmdQuit) -> (#) $ return ()
-        , \m -> (#) $ do
+        [ \(MsgCommand CmdQuit) -> handler $ return ()
+        , \m -> handler $ do
             putStrLn $ "Matched " ++ show m ++ " non-blocking."
             outBox <! M (-1)
             loop inBox outBox
         ] $ receive inBox
-                [ \(M (n + 1)) -> (#) $ do
+                [ \(M (n + 1)) -> handler $ do
                     outBox <! M (n * 2)
                     loop inBox outBox
-                , \m -> (#) $ do
+                , \m -> handler $ do
                     print m
                     loop inBox outBox
                 ]

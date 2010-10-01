@@ -5,8 +5,9 @@ module Control.Concurrent.Mailbox
     ( MailboxClass (..)
     , Mailbox
     , MsgHandler
+    , Handler
 
-    , (#)
+    , handler
 
     , newMailbox
 
@@ -25,7 +26,7 @@ where
 import Prelude hiding (catch)
 
 import Control.Concurrent
-import Control.Exception
+import Control.Exception hiding (Handler)
 import Data.Time
 import System.Timeout
 
@@ -59,10 +60,12 @@ instance MailboxClass Mailbox m where
     putMessage   = writeChan   . unMBox
     isEmpty      = isEmptyChan . unMBox
 
-type MsgHandler m a = m -> ((), IO a)
+type MsgHandler m a = m -> Handler a
 
-(#) :: IO a -> ((), IO a)
-(#) = (,) ()
+data Handler a = Handler (IO a)
+
+handler :: IO a -> Handler a
+handler = Handler
 
 newMailbox :: IO (Mailbox m)
 newMailbox = fmap MBox newChan
@@ -159,7 +162,7 @@ matchCurrent mbox hs = do
 match :: m -> [MsgHandler m a] -> IO (Maybe (IO a))
 match _ [] = return Nothing
 match m (h : hs) = do
-    ma <- catch (case h m of ((), a) -> return $ Just a)
+    ma <- catch (case h m of (Handler a) -> return $ Just a)
                 handlePatternMatchFail
     case ma of
         Just action -> return $ Just action
@@ -173,7 +176,7 @@ matchTimeout m endTime (h : hs) = do
         then return $ Right ()
         else do
             ma <- timeout timeLeft $
-                    catch (case h m of ((), a) -> return $ Just a)
+                    catch (case h m of (Handler a) -> return $ Just a)
                           handlePatternMatchFail
             case ma of
                 Just (Just action) -> return $ Left $ Just action
@@ -185,8 +188,8 @@ handlePatternMatchFail _ = return Nothing
 
 (.>) :: MsgHandler m a -> (a -> b) -> MsgHandler m b
 (h .> f) m = 
-    let ((), a) = h m 
-    in  ((), a >>= return . f)
+    let Handler a = h m 
+    in  handler $ a >>= return . f
 
 (<|>) :: [MsgHandler m a] -> [MsgHandler m b] -> [MsgHandler m (Either a b)]
 has <|> hbs = (map (.> Left) has) ++ (map (.> Right) hbs)
