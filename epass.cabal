@@ -9,6 +9,8 @@ License-File:  LICENSE
 Build-Type:    Simple
 Author:        Andreas Baldeau
 Maintainer:    Andreas Baldeau <andreas@baldeau.net>
+Homepage:      http://github.com/baldo/epass
+Bug-Reports:   http://github.com/baldo/epass/issues
 Category:      Concurrency, Network
 Tested-With:   GHC == 6.12.3
 Cabal-Version: >= 1.8
@@ -19,6 +21,15 @@ Extra-Source-Files:
     demo/Message.hs
     demo/TestClient.hs
     demo/TestServer.hs
+
+Source-Repository head
+    Type:     git
+    Location: git://github.com/baldo/epass.git
+
+Source-Repository this
+    Type:     git
+    Location: git://github.com/baldo/epass.git
+    Tag:      0.1
 
 Library
     Build-Depends:
