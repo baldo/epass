@@ -62,7 +62,10 @@ instance MailboxClass WrapBox where
     unGetMessage = unGetMessage . mBox
     putMessage   = putMessage   . mBox
     isEmpty      = isEmpty      . mBox
-    close        = killThread   . tId
+
+    close wbox = do
+        killThread $ tId wbox
+        close $ mBox wbox
 
 {- | Function to be called in case of error. 'WrapBox' is the mailbox the error
      occured on.
