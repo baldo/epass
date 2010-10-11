@@ -78,6 +78,13 @@ class MailboxClass b where
         :: b m     -- ^ the mailbox
         -> IO Bool -- ^ 'True' if empty
 
+    {- | Call this function to cleanup before exit or when the mailbox is no
+         longer needed.
+    -}
+    close
+        :: b m
+        -> IO ()
+
 -- | A 'Chan' based mailbox.
 newtype Mailbox m = MBox { unMBox :: Chan m }
 
@@ -90,6 +97,7 @@ instance MailboxClass Mailbox where
     unGetMessage = unGetChan   . unMBox
     putMessage   = writeChan   . unMBox
     isEmpty      = isEmptyChan . unMBox
+    close        = const $ return ()
 
 
 -- Sending messages ------------------------------------------------------------

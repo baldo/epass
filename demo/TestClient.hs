@@ -20,8 +20,10 @@ main = do
                  (\_ e -> inBox <! (error $ "Handled: " ++ show e))
 
     loop inBox outBox 1
+    mapM close [inBox, outBox]
+    hClose hdl
 
-loop :: WrapBox Message -> WrapBox Message -> Int -> IO ()
+loop :: MailboxClass mb => mb Message -> mb Message -> Int -> IO ()
 loop _inBox outBox 1000000 = outBox <! MsgCommand CmdQuit
 loop inBox outBox n = do
     outBox <! M n

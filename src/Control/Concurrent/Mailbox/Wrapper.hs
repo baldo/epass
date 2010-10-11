@@ -12,8 +12,6 @@ module Control.Concurrent.Mailbox.Wrapper
 
     , wrapReadHandleWithMailbox
     , wrapWriteHandleWithMailbox
-
-    , closeWrapper
     )
 where
 
@@ -54,13 +52,17 @@ class Wrappable m where
 {- | Wrapper around 'Mailbox'. For now the only 'MailboxClass' instance allowed
      for wrapping.
 -}
-data WrapBox m = WBox { mBox :: Mailbox m, tId :: ThreadId }
+data WrapBox m = WBox
+        { mBox :: Mailbox m
+        , tId  :: ThreadId
+        }
 
 instance MailboxClass WrapBox where
     getMessage   = getMessage   . mBox
     unGetMessage = unGetMessage . mBox
     putMessage   = putMessage   . mBox
     isEmpty      = isEmpty      . mBox
+    close        = killThread   . tId
 
 {- | Function to be called in case of error. 'WrapBox' is the mailbox the error
      occured on.
@@ -112,12 +114,6 @@ wrapWriteHandleWithMailbox
     -> ErrorHandler m -- ^ error handler
     -> IO (WrapBox m) -- ^ the wrapped mailbox
 wrapWriteHandleWithMailbox = wrapHandleWithMailbox outWrapper
-
--- | Cleanup the given 'WrapBox'. 
-closeWrapper
-    :: WrapBox m
-    -> IO ()
-closeWrapper = killThread . tId
 
 -- Wrapping (internal) ---------------------------------------------------------
 
