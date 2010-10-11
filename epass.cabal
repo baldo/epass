@@ -17,6 +17,7 @@ Cabal-Version: >= 1.8
 
 Extra-Source-Files:
     Setup.hs
+    CONTRIB
     README
     demo/Message.hs
     demo/TestClient.hs
