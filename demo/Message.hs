@@ -1,18 +1,14 @@
 module Message
     ( Message (..)
-    , Event (..)
     , Command (..)
     )
 where
 
 import Control.Concurrent.Mailbox.Wrapper
 
-data Message = MsgEvent Event
+data Message = MsgError String
              | MsgCommand Command
              | M Int
-  deriving (Read, Show)
-
-data Event = EvKey Char
   deriving (Read, Show)
 
 data Command = CmdQuit

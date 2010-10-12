@@ -13,9 +13,9 @@ main = do
     (hdl, _, _) <- accept sock
 
     inBox <- wrapReadHandle hdl
-                 (\inBox e -> inBox <! (error $ "Handled: " ++ show e))
+                 (\ inBox e -> inBox <! (MsgError $ show e))
     outBox <- wrapWriteHandle hdl
-                 (\_ e -> inBox <! (error $ "Handled: " ++ show e))
+                 (\ _ e -> inBox <! (MsgError $ show e))
 
     loop inBox outBox
     mapM close [inBox, outBox]
@@ -24,13 +24,17 @@ main = do
 loop :: MailboxClass mb => mb Message -> mb Message -> IO ()
 loop inBox outBox = do
     receiveNonBlocking inBox
-        [ \ (MsgCommand CmdQuit) -> handler $ return ()
+        [ \ (MsgError e) -> handler $
+                putStrLn $ "received error: " ++ e
+        , \ (MsgCommand CmdQuit) -> handler $ return ()
         , \ m -> handler $ do
-            putStrLn $ "Matched " ++ show m ++ " non-blocking."
-            outBox <! M (-1)
-            loop inBox outBox
+                putStrLn $ "Matched " ++ show m ++ " non-blocking."
+                outBox <! M (-1)
+                loop inBox outBox
         ] $ receiveTimeout inBox 1000
-                [ \ (m@(M (n + 1))) -> handler $ do
+                [ \ (MsgError e) -> handler $
+                        putStrLn $ "received error: " ++ e
+                , \ (m@(M (n + 1))) -> handler $ do
                     putStrLn $ "Matched " ++ show m ++ " within timeout."
                     outBox <! M (n * 2)
                     loop inBox outBox

@@ -15,9 +15,9 @@ main = do
     hFlush hdl
 
     inBox <- wrapReadHandle hdl
-                 (\inBox e -> inBox <! (error $ "Handled: " ++ show e))
+                 (\ inBox e -> inBox <! (MsgError $ show e))
     outBox <- wrapWriteHandle hdl
-                 (\_ e -> inBox <! (error $ "Handled: " ++ show e))
+                 (\ _ e -> inBox <! (MsgError $ show e))
 
     loop inBox outBox 1
     mapM close [inBox, outBox]
@@ -29,11 +29,13 @@ loop inBox outBox n = do
     outBox <! M n
 
     receive inBox
-        [ \(M 10) -> handler $ do
-            putStrLn "received 10"
-            loop inBox outBox (n + 1)
-        , \m -> handler $ do
-            print m
-            loop inBox outBox (n + 1)
+        [ \ (MsgError e) -> handler $
+                putStrLn $ "received error: " ++ e
+        , \ (M 10) -> handler $ do
+                putStrLn "received 10"
+                loop inBox outBox (n + 1)
+        , \ m -> handler $ do
+                print m
+                loop inBox outBox (n + 1)
         ]
 
