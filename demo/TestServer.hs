@@ -29,11 +29,14 @@ loop inBox outBox = do
             putStrLn $ "Matched " ++ show m ++ " non-blocking."
             outBox <! M (-1)
             loop inBox outBox
-        ] $ receive inBox
-                [ \ (M (n + 1)) -> handler $ do
+        ] $ receiveTimeout inBox 1000
+                [ \ (m@(M (n + 1))) -> handler $ do
+                    putStrLn $ "Matched " ++ show m ++ " within timeout."
                     outBox <! M (n * 2)
                     loop inBox outBox
                 , \ m -> handler $ do
                     print m
                     loop inBox outBox
-                ]
+                ] $ do
+                    putStrLn "Timeout"
+                    loop inBox outBox
