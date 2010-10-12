@@ -113,22 +113,32 @@ send mbox msg = do
     yield
 
 -- | An alias for 'send' in the flavor of Erlang's @!@.
-(<!) :: MailboxClass b => b m -> m -> IO ()
+(<!)
+    :: MailboxClass b
+    => b m
+    -> m
+    -> IO ()
 (<!) = send
 
 
 -- Timeout calculations (internal) ---------------------------------------------
 
-timeoutFactor :: Num a => a
+timeoutFactor
+    :: Num a
+    => a
 timeoutFactor = 1000000
 
-calcEndTime :: Int -> IO UTCTime
+calcEndTime
+    :: Int
+    -> IO UTCTime
 calcEndTime to = do
     curTime <- getCurrentTime
     let dt = fromIntegral to / timeoutFactor
     return $ addUTCTime dt curTime
 
-calcTimeLeft :: UTCTime -> IO Int
+calcTimeLeft
+    :: UTCTime
+    -> IO Int
 calcTimeLeft endTime = do
     curTime <- getCurrentTime
     return $ round $ (diffUTCTime endTime curTime) * timeoutFactor
@@ -150,7 +160,7 @@ receive
     => b m              -- ^ mailbox to receive on
     -> [MsgHandler m a] -- ^ message handlers
     -> IO a
-receive _ [] = error "No message handler given! Cannot match."
+receive _    []       = error "No message handler given! Cannot match."
 receive mbox handlers = do
     a <- matchAll mbox handlers
     a
@@ -165,8 +175,8 @@ receiveTimeout
     -> [MsgHandler m a] -- ^ message handlers
     -> IO a             -- ^ timeout handler
     -> IO a
-receiveTimeout _ _ [] toa = toa
-receiveTimeout mbox 0 handlers toa = receiveNonBlocking mbox handlers toa
+receiveTimeout _    _ []        toa = toa
+receiveTimeout mbox 0  handlers toa = receiveNonBlocking mbox handlers toa
 receiveTimeout mbox to handlers toa = do
     endTime <- calcEndTime to
     ma <- matchAllTimeout mbox endTime handlers
@@ -192,9 +202,13 @@ receiveNonBlocking mbox handlers na = do
 
 -- Matching messages (internal) ------------------------------------------------
 
-matchAll :: MailboxClass b => b m -> [MsgHandler m a] -> IO (IO a)
+matchAll
+    :: MailboxClass b
+    => b m
+    -> [MsgHandler m a]
+    -> IO (IO a)
 matchAll mbox hs = do
-    m <- getMessage mbox
+    m  <- getMessage mbox
     ma <- match m hs
 
     case ma of
@@ -206,7 +220,12 @@ matchAll mbox hs = do
             unGetMessage mbox m
             return r
 
-matchAllTimeout :: MailboxClass b => b m -> UTCTime -> [MsgHandler m a] -> IO (Maybe (IO a))
+matchAllTimeout
+    :: MailboxClass b
+    => b m
+    -> UTCTime
+    -> [MsgHandler m a]
+    -> IO (Maybe (IO a))
 matchAllTimeout mbox endTime hs = do
     timeLeft <- calcTimeLeft endTime
 
@@ -233,7 +252,11 @@ matchAllTimeout mbox endTime hs = do
                 Nothing ->
                     return Nothing
 
-matchCurrent :: MailboxClass b => b m -> [MsgHandler m a] -> IO (Maybe (IO a))
+matchCurrent
+    :: MailboxClass b
+    => b m
+    -> [MsgHandler m a]
+    -> IO (Maybe (IO a))
 matchCurrent mbox hs = do
     empty <- isEmpty mbox 
     if empty
@@ -250,8 +273,11 @@ matchCurrent mbox hs = do
                     unGetMessage mbox m
                     return r
 
-match :: m -> [MsgHandler m a] -> IO (Maybe (IO a))
-match _ [] = return Nothing
+match
+    :: m
+    -> [MsgHandler m a]
+    -> IO (Maybe (IO a))
+match _ []       = return Nothing
 match m (h : hs) = do
     ma <- catch (case h m of (Handler a) -> return $ Just a)
                 handlePatternMatchFail
@@ -259,8 +285,12 @@ match m (h : hs) = do
         Just action -> return $ Just action
         Nothing     -> match m hs
 
-matchTimeout :: m -> UTCTime -> [MsgHandler m a] -> IO (Either (Maybe (IO a)) ())
-matchTimeout _ _ [] = return $ Left Nothing
+matchTimeout
+    :: m
+    -> UTCTime
+    -> [MsgHandler m a]
+    -> IO (Either (Maybe (IO a)) ())
+matchTimeout _ _       []       = return $ Left Nothing
 matchTimeout m endTime (h : hs) = do
     timeLeft <- calcTimeLeft endTime
     if timeLeft <= 0
@@ -274,7 +304,9 @@ matchTimeout m endTime (h : hs) = do
                 Just Nothing       -> matchTimeout m endTime hs
                 Nothing            -> return $ Right ()
 
-handlePatternMatchFail :: PatternMatchFail -> IO (Maybe (IO a))
+handlePatternMatchFail
+    :: PatternMatchFail
+    -> IO (Maybe (IO a))
 handlePatternMatchFail _ = return Nothing
 
 
@@ -299,7 +331,9 @@ type MsgHandler m a = m -> Handler a
 data Handler a = Handler (IO a)
 
 -- | Generate a handler from an 'IO' action.
-handler :: IO a -> Handler a
+handler
+    :: IO a
+    -> Handler a
 handler = Handler
 
 
