@@ -202,6 +202,10 @@ receiveNonBlocking mbox handlers na = do
 
 -- Matching messages (internal) ------------------------------------------------
 
+data TimeoutResult a = Match (IO a)
+                     | NoMatch
+                     | Timeout
+
 matchAll
     :: MailboxClass b
     => b m
@@ -238,15 +242,15 @@ matchAllTimeout mbox endTime hs = do
                 Just m -> do
                     matched <- matchTimeout m endTime hs
                     case matched of
-                        Left Nothing -> do
+                        NoMatch -> do
                             r <- matchAllTimeout mbox endTime hs
                             unGetMessage mbox m
                             return r
 
-                        Left (Just a) ->
+                        (Match a) ->
                             return $ Just a
 
-                        Right () -> do
+                        Timeout -> do
                             unGetMessage mbox m
                             return Nothing
                 Nothing ->
@@ -289,20 +293,20 @@ matchTimeout
     :: m
     -> UTCTime
     -> [MsgHandler m a]
-    -> IO (Either (Maybe (IO a)) ())
-matchTimeout _ _       []       = return $ Left Nothing
+    -> IO (TimeoutResult a)
+matchTimeout _ _       []       = return NoMatch
 matchTimeout m endTime (h : hs) = do
     timeLeft <- calcTimeLeft endTime
     if timeLeft <= 0
-        then return $ Right ()
+        then return Timeout
         else do
             ma <- timeout timeLeft $
                     catch (case h m of (Handler a) -> return $ Just a)
                           handlePatternMatchFail
             case ma of
-                Just (Just action) -> return $ Left $ Just action
+                Just (Just action) -> return $ Match action
                 Just Nothing       -> matchTimeout m endTime hs
-                Nothing            -> return $ Right ()
+                Nothing            -> return $ Timeout
 
 handlePatternMatchFail
     :: PatternMatchFail
