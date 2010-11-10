@@ -30,7 +30,7 @@ Source-Repository head
 Library
     Build-Depends:
         base == 4.*,
-        time == 1.1.*
+        time == 1.1.* || == 1.2.*
 
     Ghc-Options:
         -Wall
