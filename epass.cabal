@@ -1,5 +1,5 @@
 Name:          epass
-Version:       0.1.1
+Version:       0.1.2
 Stability:     Alpha
 Synopsis:      Baisc, Erlang-like message passing supporting sockets.
 Description:   This package provides Erlang-like mailboxes for message passing.
@@ -17,6 +17,7 @@ Cabal-Version: >= 1.8
 
 Extra-Source-Files:
     Setup.hs
+    CHANGES
     CONTRIB
     README
     demo/Message.hs
