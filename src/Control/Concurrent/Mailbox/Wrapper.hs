@@ -15,9 +15,12 @@ module Control.Concurrent.Mailbox.Wrapper
     )
 where
 
+import Prelude hiding (catch)
+
 import Control.Concurrent.Mailbox
 
 import Control.Concurrent
+import Control.Exception
 import System.IO
 
 
