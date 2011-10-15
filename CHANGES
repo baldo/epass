@@ -1,3 +1,9 @@
+0.1.2 -> 0.2
+    * Supports GHC-7.0.* and GHC-7.2.1
+    * Using Haskell2010
+    * Default MailBox implementation now uses TChan
+    * Removed some warnings
+
 0.1.1 -> 0.1.2
 
 0.1 -> 0.1.1

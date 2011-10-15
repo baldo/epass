@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+
 module Main where
 
 import Message
@@ -18,7 +20,7 @@ main = do
                  (\ _ e -> inBox <! (MsgError $ show e))
 
     loop inBox outBox
-    mapM close [inBox, outBox]
+    mapM_ close [inBox, outBox]
     hClose hdl
 
 loop :: MailboxClass mb => mb Message -> mb Message -> IO ()
@@ -34,9 +36,9 @@ loop inBox outBox = do
         ] $ receiveTimeout inBox 1000
                 [ \ (MsgError e) -> handler $
                         putStrLn $ "received error: " ++ e
-                , \ (m@(M (n + 1))) -> handler $ do
+                , \ (m@(M n)) -> handler $ do
                     putStrLn $ "Matched " ++ show m ++ " within timeout."
-                    outBox <! M (n * 2)
+                    outBox <! M ((n - 1) * 2)
                     loop inBox outBox
                 , \ m -> handler $ do
                     print m

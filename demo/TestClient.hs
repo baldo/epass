@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
+
 module Main where
 
 import Message
@@ -20,7 +22,7 @@ main = do
                  (\ _ e -> inBox <! (MsgError $ show e))
 
     loop inBox outBox 1
-    mapM close [inBox, outBox]
+    mapM_ close [inBox, outBox]
     hClose hdl
 
 loop :: MailboxClass mb => mb Message -> mb Message -> Int -> IO ()

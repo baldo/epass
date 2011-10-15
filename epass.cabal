@@ -1,5 +1,5 @@
 Name:          epass
-Version:       0.1.2
+Version:       0.2.0
 Stability:     Alpha
 Synopsis:      Baisc, Erlang-like message passing supporting sockets.
 Description:   This package provides Erlang-like mailboxes for message passing.
@@ -12,8 +12,8 @@ Maintainer:    Andreas Baldeau <andreas@baldeau.net>
 Homepage:      http://github.com/baldo/epass
 Bug-Reports:   http://github.com/baldo/epass/issues
 Category:      Concurrency, Network
-Tested-With:   GHC == 6.12.3
-Cabal-Version: >= 1.8
+Tested-With:   GHC == 7.0.3
+Cabal-Version: >= 1.10
 
 Extra-Source-Files:
     Setup.hs
@@ -29,8 +29,12 @@ Source-Repository head
     Location: git://github.com/baldo/epass.git
 
 Library
+    Default-Language:
+        Haskell2010
+
     Build-Depends:
-        base == 4.*,
+        base >= 4.3 && < 4.5,
+        stm == 2.2.*,
         time == 1.1.* || == 1.2.*
 
     Ghc-Options:

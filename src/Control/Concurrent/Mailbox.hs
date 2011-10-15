@@ -40,7 +40,8 @@ where
 
 import Prelude hiding (catch)
 
-import Control.Concurrent
+import Control.Concurrent (yield)
+import Control.Concurrent.STM
 import Control.Exception hiding (Handler)
 import Data.Time
 import System.Timeout
@@ -86,18 +87,18 @@ class MailboxClass b where
         -> IO ()
 
 -- | A 'Chan' based mailbox.
-newtype Mailbox m = MBox { unMBox :: Chan m }
+newtype Mailbox m = MBox (TChan m)
 
 -- | Creates a new mailbox.
 newMailbox :: IO (Mailbox m)
-newMailbox = fmap MBox newChan
+newMailbox = fmap MBox newTChanIO
 
 instance MailboxClass Mailbox where
-    getMessage   = readChan    . unMBox
-    unGetMessage = unGetChan   . unMBox
-    putMessage   = writeChan   . unMBox
-    isEmpty      = isEmptyChan . unMBox
-    close        = const $ return ()
+    getMessage   (MBox chan)     = atomically $ readTChan chan
+    unGetMessage (MBox chan) msg = atomically $ unGetTChan chan msg
+    putMessage   (MBox chan) msg = atomically $ writeTChan chan msg
+    isEmpty      (MBox chan)     = atomically $ isEmptyTChan chan
+    close        _               = return ()
 
 
 -- Sending messages ------------------------------------------------------------
