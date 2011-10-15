@@ -1,3 +1,6 @@
+0.2 -> 0.2.1
+    * Replaced deprected Prelude.catch by Control.Exception.catch.
+
 0.1.2 -> 0.2
     * Supports GHC-7.0.* and GHC-7.2.1
     * Using Haskell2010
